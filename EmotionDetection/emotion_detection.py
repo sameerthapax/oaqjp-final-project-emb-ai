@@ -6,49 +6,55 @@ def emotion_detector(text_to_analyze):
     headers = {"grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"}
     payload = {"raw_document": {"text": text_to_analyze}}
 
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        response.raise_for_status()
-
-        # Convert response text to dictionary
-        response_dict = json.loads(response.text)
-
-        # Navigate to emotions scores (Watson format)
-        emotions = response_dict["emotionPredictions"][0]["emotion"]
-
-        anger_score = emotions["anger"]
-        disgust_score = emotions["disgust"]
-        fear_score = emotions["fear"]
-        joy_score = emotions["joy"]
-        sadness_score = emotions["sadness"]
-
-        # Find dominant emotion
-        scores = {
-            "anger": anger_score,
-            "disgust": disgust_score,
-            "fear": fear_score,
-            "joy": joy_score,
-            "sadness": sadness_score,
-        }
-        dominant_emotion = max(scores, key=scores.get)
-
-        # Return required output format
-        return {
-            "anger": anger_score,
-            "disgust": disgust_score,
-            "fear": fear_score,
-            "joy": joy_score,
-            "sadness": sadness_score,
-            "dominant_emotion": dominant_emotion,
-        }
-
-    except (requests.exceptions.RequestException, KeyError, IndexError, json.JSONDecodeError):
-        # Safe fallback in the same output shape
+    # If user input is blank (or only spaces), return None-filled dict
+    if text_to_analyze is None or not str(text_to_analyze).strip():
         return {
             "anger": None,
             "disgust": None,
             "fear": None,
             "joy": None,
             "sadness": None,
-            "dominant_emotion": None,
+            "dominant_emotion": None
         }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    # REQUIRED: use status_code to handle blank/invalid entries
+    if response.status_code == 400:
+        return {
+            "anger": None,
+            "disgust": None,
+            "fear": None,
+            "joy": None,
+            "sadness": None,
+            "dominant_emotion": None
+        }
+
+    response.raise_for_status()
+
+    response_dict = json.loads(response.text)
+    emotions = response_dict["emotionPredictions"][0]["emotion"]
+
+    anger_score = emotions["anger"]
+    disgust_score = emotions["disgust"]
+    fear_score = emotions["fear"]
+    joy_score = emotions["joy"]
+    sadness_score = emotions["sadness"]
+
+    scores = {
+        "anger": anger_score,
+        "disgust": disgust_score,
+        "fear": fear_score,
+        "joy": joy_score,
+        "sadness": sadness_score
+    }
+    dominant_emotion = max(scores, key=scores.get)
+
+    return {
+        "anger": anger_score,
+        "disgust": disgust_score,
+        "fear": fear_score,
+        "joy": joy_score,
+        "sadness": sadness_score,
+        "dominant_emotion": dominant_emotion
+    }
